@@ -1,9 +1,0 @@
-streamlit
-tensorflow==2.20.0
-tensorflow-io-gcs-filesystem
-numpy
-pandas
-regex
-emoji
-nltk
-sastrawi
