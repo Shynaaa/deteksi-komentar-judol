@@ -12,13 +12,22 @@ from nltk.corpus import stopwords
 from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 
+# =======KONFIGURASI HALAMAN=======
+st.set_page_config(page_title="Deteksi Judol", layout="centered")
+
+# ===========LOAD NLTK===========
 nltk.data.path.append("./nltk_data")
-
-
 stop_words = set(stopwords.words('indonesian'))
 stemmer = StemmerFactory().create_stemmer()
 
-# ---- Fungsi Preprocessing ----
+# ======LOAD MODEL & TOKENIZER=======
+model = tf.keras.models.load_model("model3.keras")
+with open("tokenizer3.pkl", "rb") as f:
+    tokenizer = pickle.load(f)
+
+MAXLEN = 15  
+
+# ===========PREPROCESSING==============
 def normalize_unicode(text):
     return unicodedata.normalize("NFKC", text)
 
@@ -267,206 +276,153 @@ def preprocess_text(text):
 
     return feature_keyword, feature_nominal, feature_brand, feature_google, clean_text
 
-# ---- Load model & tokenizer ----
-model = tf.keras.models.load_model("model3.keras")
-with open("tokenizer3.pkl", "rb") as f:
-    tokenizer = pickle.load(f)
-
-# ==================== AESTHETIC PURPLE STYLE ====================
-st.set_page_config(page_title="Deteksi Judol", layout="centered")
-
+# =========User Interface Style=========
 st.markdown("""
 <style>
-
 body {
-    background: linear-gradient(145deg, #eee6ff, #f5f0ff, #f0e8ff);
+    background-color: #f4f6f9;
 }
-
-.main-wrapper {
-    max-width: 480px;
-    margin: auto;
-    padding: 10px;
+.main-box {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0px 4px 18px rgba(0,0,0,0.06);
 }
-
-/* Header Title */
-.title-box {
+.result-box {
+    padding: 15px;
+    border-radius: 10px;
     text-align: center;
-    padding: 5px 20px;
-    margin-bottom: 18px;
+    margin-top: 15px;
 }
-
-.title-text {
-    font-size: 28px;
-    font-weight: 800;
-    color: #5b3fa3;
-    letter-spacing: 0.5px;
-}
-
-.subtitle-text {
-    font-size: 14px;
-    margin-top: -4px;
-    color: #7b62bd;
-}
-
-/* Aesthetic Card */
-.card {
-    background: rgba(255, 255, 255, 0.65);
-    backdrop-filter: blur(10px);
-    border-radius: 18px;
-    padding: 7px 26px;
-    margin-bottom: 20px;
-    border: 1px solid rgba(255,255,255,0.55);
-    box-shadow: 0px 8px 25px rgba(120, 85, 180, 0.13);
-}
-
-/* Textarea */
-textarea {
-    border-radius: 14px !important;
-    border: 1px solid #d3c7f7 !important;
-    background: #faf7ff !important;
-}
-
-
-/* Button purple aesthetic mirip default */
-div.stButton > button {
-    width: 120% !important;
-    background: #f3eaff !important;              
-    color: #5b3fa3 !important;                    
-    border: 1px solid #c9b3f5 !important;         
-    border-radius: 10px !important;               
-    padding: 10px 0px !important;
-    font-size: 16px !important;
-    font-weight: 600 !important;
-    box-shadow: 0px 4px 10px rgba(120, 85, 180, 0.15) !important;
-    transition: 0.15s ease-in-out !important;
-}
-
-/* Hover */
-div.stButton > button:hover {
-    background: #e5d6ff !important;              
-    border-color: #b39aef !important;
-    box-shadow: 0px 6px 14px rgba(120, 85, 180, 0.25) !important;
-}
-
-/* When clicked (active) */
-div.stButton > button:active {
-    background: #d7c4ff !important;
-    border-color: #a182e8 !important;
-}
-            
-/* Result Box */
-.result-card {
-    background: rgba(255,255,255,0.85);
-    padding: 5px;
-    border-radius: 16px;
-    box-shadow: 0px 6px 18px rgba(90, 60, 150, 0.12);
-    text-align: center;
-    border: 1px solid rgba(255,255,255,0.7);
-}
-
-.result-title {
-    font-size: 18px;
-    font-weight: 700;
-    color: #4d347f;
-    margin-bottom: 10px;
-}
-
-.badge {
-    display: inline-block;
-    padding: 8px 18px;
-    border-radius: 22px;
-    font-size: 17px;
-    font-weight: 700;
-}
-
-/* aman */
-.badge-aman {
-    background: #e9ffef;
-    color: #2e8646;
-    border: 1px solid #c0f5ce;
-}
-
-/* judol */
-.badge-bahaya {
-    background: #ffe8f0;
-    color: #d63863;
-    border: 1px solid #ffc7d9;
-}
-
-/* small description */
-.desc {
-    font-size: 13px;
-    color: #6d5ca8;
-    text-align: center;
-    padding: 6px 12px;
-    margin-top: -8px;
-}
-
 </style>
 """, unsafe_allow_html=True)
 
-# ==================== CONTENT ====================
-st.markdown("<div class='main-wrapper'>", unsafe_allow_html=True)
+# ======HEADER========
+st.markdown("<div class='main-box'>", unsafe_allow_html=True)
+st.title("Deteksi Komentar Berindikasi Judi Online")
+st.caption("Menggunakan metode LSTM dan fitur heuristik tambahan")
 
-# Header
-st.markdown("""
-<div class='title-box'>
-    <div class='title-text'>🔮 Deteksi Komentar Judol</div>
-    <div class='subtitle-text'>Deteksi otomatis menggunakan pemrosesan bahasa & fitur heuristik</div>
-</div>
-""", unsafe_allow_html=True)
+# =====PILIH MODE======
+mode = st.radio("Pilih metode input:", ["Upload File CSV", "Komentar Tunggal"])
 
-# Description
-st.markdown("<div class='desc'>Masukkan komentar dari TikTok. Sistem akan mendeteksi indikasi promosi judi online berdasarkan kata kunci terkait judi online, nominal transaksi, nama brand judi online, dan konteks kalimat yang mengarahkan pengguna untuk mengunjungi situs tertentu melalui pencarian Google.</div>", unsafe_allow_html=True)
+# MODE 1 — Single Komentar
+if mode == "Komentar Tunggal":
 
-# Input area
-st.markdown("<div class='card'>", unsafe_allow_html=True)
-input_text = st.text_area("Tulis komentar di sini:", height=150, label_visibility="collapsed")
+    text_input = st.text_area("Masukkan komentar:")
+
+    if st.button("Deteksi") and text_input.strip() != "":
+
+        f_keyword, f_nominal, f_brand, f_google, clean_text = preprocess_text(text_input)
+
+        seq = tokenizer.texts_to_sequences([clean_text])
+        padded = pad_sequences(seq, maxlen=MAXLEN)
+
+        prob = model.predict([
+            padded,
+            np.array([[f_keyword]]),
+            np.array([[f_nominal]]),
+            np.array([[f_brand]]),
+            np.array([[f_google]])
+        ])[0][0]
+
+        if prob >= 0.5:
+            st.error(f"Terindikasi JUDI ONLINE ({prob*100:.2f}%)")
+        else:
+            st.success(f"Terindikasi NON-JUDI ONLINE ({(1-prob)*100:.2f}%)")
+
+# MODE 2 — Upload CSV / Excel
+elif mode == "Upload File CSV":
+
+    uploaded = st.file_uploader(
+        "Upload file CSV atau Excel",
+        type=["csv", "xls", "xlsx"]
+    )
+
+    if uploaded is not None:
+        try:
+            import time
+
+            # Fungsi baca file
+            def read_file_with_header(file):
+                try:
+                    if file.name.endswith(".csv"):
+                        df = pd.read_csv(file, encoding="utf-8-sig")
+                    else:
+                        df = pd.read_excel(file)
+
+                    return df
+                except Exception:
+                    st.error("File tidak bisa dibaca. Pastikan CSV/Excel valid.")
+                    return None
+
+            df = read_file_with_header(uploaded)
+
+            if df is not None:
+
+                # Preview data
+                st.dataframe(df.head())
+
+                # Tombol Proses Semua
+                if st.button("Proses Deteksi", key="proses_btn"):
+
+                    total_data = len(df)
+                    results = []
+                    total_judol = 0
+                    total_non = 0
+
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+
+                    start_time = time.time()
+
+                    # PROSES DETEKSI
+                    for i, text in enumerate(df["Komentar"].astype(str)):
+
+                        f_keyword, f_nominal, f_brand, f_google, clean_text = preprocess_text(text)
+                        seq = tokenizer.texts_to_sequences([clean_text])
+                        padded = pad_sequences(seq, maxlen=MAXLEN)
+
+                        prob = model.predict([
+                            padded,
+                            np.array([[f_keyword]]),
+                            np.array([[f_nominal]]),
+                            np.array([[f_brand]]),
+                            np.array([[f_google]])
+                        ], verbose=0)[0][0]
+
+                        if prob >= 0.5:
+                            results.append("Judol")
+                            total_judol += 1
+                        else:
+                            results.append("Non-Judol")
+                            total_non += 1
+
+                        percent = int(((i + 1) / total_data) * 100)
+                        progress_bar.progress(percent)
+                        status_text.text(f"Proses deteksi: {percent}% selesai")
+
+                        time.sleep(0.02) 
+
+                    # Setelah selesai
+                    df["Hasil_Deteksi"] = results
+
+                    end_time = time.time()
+                    duration = round(end_time - start_time, 2)
+
+                    progress_bar.progress(100)
+                    status_text.text("Deteksi selesai.")
+
+                    st.success(f"Proses selesai dalam {duration} detik ")
+
+                    # Tampilkan hasil
+                    st.dataframe(df)
+
+                    st.write("### Ringkasan")
+                    st.write("Total Data:", total_data)
+                    st.write("Total Judol:", total_judol)
+                    st.write("Total Non-Judol:", total_non)
+
+        except Exception as e:
+            st.error(f"File tidak valid atau tidak bisa dibaca.\n{e}")
+
 st.markdown("</div>", unsafe_allow_html=True)
-
-# Button
-st.markdown("<div class='detect-btn'>", unsafe_allow_html=True)
-detect_clicked = st.button("Deteksi Sekarang")
-st.markdown("</div>", unsafe_allow_html=True)
-
-
-# ==================== PREDIKSI ====================
-if detect_clicked and input_text.strip() != "":
-
-    # ---- Ambil fitur otomatis dan teks hasil preprocessing ----
-    f_keyword, f_nominal, f_brand, f_google, clean_text = preprocess_text(input_text)
-
-    # ---- Sequence ----
-    seq = tokenizer.texts_to_sequences([clean_text])
-    padded = pad_sequences(seq, maxlen=15)
-
-    # ---- Prediksi ----
-    prob = model.predict([
-        padded,
-        np.array([[f_keyword]]),
-        np.array([[f_nominal]]),
-        np.array([[f_brand]]),
-        np.array([[f_google]])
-    ])[0][0]
-
-    # ---- Label & Persentase ----
-    is_judol = prob >= 0.5
-    persen = prob * 100 if is_judol else (100 - prob * 100)
-    persen = round(persen, 2)
-
-    # ==================== OUTPUT UI ====================
-    st.markdown("<div class='result-card'>", unsafe_allow_html=True)
-    st.markdown("<div class='result-title'>Hasil Deteksi</div>", unsafe_allow_html=True)
-
-    if is_judol:
-        st.markdown(
-            f"<div class='badge badge-bahaya'>Terindikasi PROMOSI JUDOL ⚠ — {persen:.1f}%</div>",
-            unsafe_allow_html=True,
-        )
-    else:
-        st.markdown(
-            f"<div class='badge badge-aman'>Terindikasi NON-JUDOL ✔ — {persen:.1f}%</div>",
-            unsafe_allow_html=True,
-        )
-
-    st.markdown("</div>", unsafe_allow_html=True)
