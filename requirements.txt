@@ -6,3 +6,4 @@ regex
 emoji
 nltk
 sastrawi
+openpyxl
