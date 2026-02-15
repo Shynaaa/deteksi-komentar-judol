@@ -360,7 +360,23 @@ elif mode == "Upload File CSV":
             if df is not None:
 
                 # Preview data
+                st.write("### Preview Data \n Pastikan file terdapat kolom komentar. Jika tidak terdapat kolom komentar, maka sistem otomatis akan mendeteksi pada kolom pertama.")
                 st.dataframe(df.head())
+
+                #Cari kolom komentar otomatis
+                comment_col = None
+                keywords = ["komentar", "comment", "komen", "koment"]
+                for col in df.columns:
+                    col_lower = col.lower()
+                    if any(keyword in col_lower for keyword in keywords):
+                        comment_col = col
+                        break
+
+                # Jika tidak ditemukan → pakai kolom pertama
+                if comment_col is None:
+                    comment_col = df.columns[0]
+
+                st.info(f"Kolom yang akan dideteksi: {comment_col}")
 
                 # Tombol Proses Semua
                 if st.button("Proses Deteksi", key="proses_btn"):
@@ -376,7 +392,7 @@ elif mode == "Upload File CSV":
                     start_time = time.time()
 
                     # PROSES DETEKSI
-                    for i, text in enumerate(df["Komentar"].astype(str)):
+                    for i, text in enumerate(df[comment_col].astype(str)):
 
                         f_keyword, f_nominal, f_brand, f_google, clean_text = preprocess_text(text)
                         seq = tokenizer.texts_to_sequences([clean_text])
